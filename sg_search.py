@@ -4,6 +4,8 @@ from elasticsearch_dsl import Search, Q
 from slugify import slugify
 
 ELASTICSEARCH = os.environ.get('ELASTICSEARCH')
+RECIPE_INDEX = 'recipes_alias'
+PRODUCT_INDEX = 'product'
 
 # `empty_results.result.src` is set depending function called
 # Example:
@@ -46,14 +48,14 @@ class SGSearch(object):
     def __repr__(self):
         return '<SGsearch {}>'.format(self)
 
-    def find_meal(self, name, simple_name):
+    def meal(self, name, simple_name):
         """
         Returns a product or recipe that matches name or simple_name
 
         @simple_name: hamburger
         @name: hamburger with cheese
         """
-        query = Search(index='recipes_alias,product')
+        query = Search(index='{},{}'.format(RECIPE_INDEX, PRODUCT_INDEX))
 
         # product queries
         nested_product_course_name = Q(
@@ -63,7 +65,7 @@ class SGSearch(object):
         )
         product_course = Q(
             'indices',
-            indices=['product'], query=nested_product_course_name
+            indices=[PRODUCT_INDEX], query=nested_product_course_name
         )
         product_should_simple_name = Q("term", name_lowercase__raw=u"{}".format(
             simple_name.strip().replace("\n", "").lower()),
@@ -138,3 +140,19 @@ class SGSearch(object):
 
         empty_results["result"][0]["src"] = None
         return empty_results
+
+    def recipes(self, name):
+        """
+        Searches for all recipes that match by name
+        @name: string name of recipe to search
+        """
+        query = Search(index=RECIPE_INDEX)
+        recipe_must = Q("exists", field="_sg.ingredients")
+        recipe_name_must = Q("term", clean_name__raw=clean_name(name))
+        query = query.query(
+            'bool',
+            must=[recipe_must, recipe_name_must]
+        )
+
+        results = [hit.to_dict() for hit in query.scan()]
+        return results
