@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+env
+sg_search.egg-info
