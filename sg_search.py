@@ -114,10 +114,10 @@ class SGSearch(object):
             index = result.hits[0].meta.index
 
             if index == 'product':
-                _ingredients = list(result[0].scoring.ingredients) if hasattr(result[0].scoring, 'ingredients') else []
+                _ingredients = [i.name for i in result[0].scoring.ingredients]
                 _ingredients_lines = []
                 src = 'pm'
-                _course = list(result[0].scoring.course) if hasattr(result[0].scoring, 'course') else []
+                _course = [c.name for c in result[0].scoring.courses]
             else:
                 _ingredients = list(result[0]._sg.ingredients) if hasattr(result[0]._sg, 'ingredients') else []
                 _ingredients_lines = list(result[0].ingredientLines) if hasattr(result[0], 'ingredientLines') else []
