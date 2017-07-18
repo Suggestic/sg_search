@@ -27,6 +27,14 @@ result = search.recipes('cabernet sauvignon, faust 11 napa')
 print(result)
 ```
 
+Search recipe by token
+```
+# returns all hit matches `default`
+recipes = search.recipe_by_token('bread')
+# return only first 3 results
+recipes = search.recipe_by_token('bread', 3)
+```
+
 **TODO:**
 * Search for restaurants
 * Search for menu_items
