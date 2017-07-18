@@ -107,6 +107,9 @@ class SGSearch(object):
             should=[product_bool_query, recipe_bool_query],
         )
 
+        import json
+        print(json.dumps(query.to_dict()))
+
         result = query.execute()
 
         if result:
@@ -155,4 +158,23 @@ class SGSearch(object):
         )
 
         results = [hit.to_dict() for hit in query.scan()]
+        return results
+
+    def recipe_by_token(self, token, hits=None):
+        """
+        Search recipe by token
+        @token: searching key word
+        @hits: number of result hits to return default to all
+        """
+        query = Search(index=RECIPE_INDEX)
+        recipe_must = Q("exists", field="_sg.ingredients")
+        recipe_name_must = Q("match", clean_name=clean_name(token))
+        query = query.query(
+            'bool',
+            must=[recipe_must, recipe_name_must]
+        )
+        if not hits:
+            results = [hit.to_dict() for hit in query.scan()]
+        else:
+            results = [hit.to_dict() for hit in query[:hits].execute()]
         return results
