@@ -61,6 +61,8 @@ class SGSearch(object):
         nested_product_course_name = Q(
             'nested', path='scoring.courses', filter=Q(
                 'term', scoring__courses__name="Wine"
+            ) & Q(
+                'exists', field="scoring.ingredients"
             )
         )
         product_course = Q(
@@ -106,9 +108,6 @@ class SGSearch(object):
             'bool',
             should=[product_bool_query, recipe_bool_query],
         )
-
-        import json
-        print(json.dumps(query.to_dict()))
 
         result = query.execute()
 
