@@ -1,6 +1,7 @@
 import os
 from elasticsearch_dsl.connections import connections
 from elasticsearch_dsl import Search, Q
+from elasticsearch import Elasticsearch
 from slugify import slugify
 
 ELASTICSEARCH = os.environ.get('ELASTICSEARCH')
@@ -36,14 +37,14 @@ def clean_name(name):
 class SGSearch(object):
     def __init__(self, elasticsearch=None, **kwargs):
         # If no elasticsearch provided, fallback to $ELASTICSEARCH.
-        self.elasticsearch = elasticsearch or ELASTICSEARCH
+        self.elasticsearch = elasticsearch
 
         if not self.elasticsearch:
             raise ValueError('You must provide a elasticsearch host.')
 
-        self.elasticsearch_connection = connections.configure(
-            default={'hosts': self.elasticsearch, 'timeout': 20}, sniff_on_start=True
-        )
+        # self.elasticsearch_connection = connections.configure(
+        #     default={'hosts': self.elasticsearch, 'timeout': 20}, sniff_on_start=True
+        # )
 
     def __repr__(self):
         return '<SGsearch {}>'.format(self)
@@ -151,7 +152,7 @@ class SGSearch(object):
         @name: Cabernet Sauvignon, Faust 11 Napa
         @simple_name: Cabernet Sauvignon
         """
-        query = Search(index='{}'.format(PRODUCT_INDEX))
+        query = Search(index='{}'.format(PRODUCT_INDEX), using=Elasticsearch(self.elasticsearch))
 
         # Nested Query
         # filters only wine courses and products must have scoring.ingredients
