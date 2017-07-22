@@ -135,7 +135,80 @@ class SGSearch(object):
                     'courses_scores': [{"course": course, "score": 1.0} for course in _course],
                     'source': src,
                     'ings_scores': [{"ingredient": ing, "score": 1.0} for ing in _ingredients],
-                    'name': None,
+                    'name': result[0].name,
+                    'trust_me': True
+                }]
+            }
+
+        empty_results["result"][0]["src"] = None
+        return empty_results
+
+    def product(self, name, simple_name):
+        """
+        Searches for a product by name, Filters only wines and only those who
+        have ingredients.
+
+        @name: Cabernet Sauvignon, Faust 11 Napa
+        @simple_name: Cabernet Sauvignon
+        """
+        query = Search(index='{}'.format(PRODUCT_INDEX))
+
+        # Nested Query
+        # filters only wine courses and products must have scoring.ingredients
+        nested_scoring = Q(
+            'bool',
+            must=[
+                Q(
+                    'nested', path='scoring.courses',
+                    filter=Q(
+                        'term', scoring__courses__name="Wine"
+                    )
+                ),
+                Q(
+                    'nested', path='scoring.ingredients',
+                    filter=Q(
+                        Q('exists', field="scoring.ingredients")
+                    )
+                )
+            ]
+        )
+
+        # Name filters
+        product_should_simple_name = Q("term", name_lowercase__raw=u"{}".format(
+            simple_name.strip().replace("\n", "").lower()),
+            boost=1
+        )
+        product_should_complex_name = Q("term", name_lowercase__raw=u"{}".format(
+            name.strip().replace("\n", "").lower()),
+            boost=2
+        )
+        product_name_should = Q(
+            'bool',
+            should=[product_should_simple_name, product_should_complex_name]
+        )
+
+        # Bool query for product names query and nested scoring query
+        query = query.query('bool', must=[nested_scoring, product_name_should])
+
+        result = query.execute()
+
+        if result:
+            nutrients = []
+            _ingredients = [i.name for i in result[0].scoring.ingredients]
+            _ingredients_lines = []
+            src = 'pm'
+            _course = [c.name for c in result[0].scoring.courses]
+
+            return {
+                'result': [{
+                    'ings': _ingredients,
+                    'ings_lines': _ingredients_lines,
+                    'nutrients': nutrients,
+                    'courses': _course,
+                    'courses_scores': [{"course": course, "score": 1.0} for course in _course],
+                    'source': src,
+                    'ings_scores': [{"ingredient": ing, "score": 1.0} for ing in _ingredients],
+                    'name': result[0].name,
                     'trust_me': True
                 }]
             }

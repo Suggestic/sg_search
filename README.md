@@ -35,6 +35,11 @@ recipes = search.recipe_by_token('bread')
 recipes = search.recipe_by_token('bread', 3)
 ```
 
+### Search for a product by name
+```.py
+product = search.product('Cabernet Sauvignon, Faust 11 Napa', 'Cabernet Sauvignon')
+```
+
 **TODO:**
 * Search for restaurants
 * Search for menu_items
