@@ -159,12 +159,7 @@ class SGSearch(object):
         nested_scoring = Q(
             'bool',
             must=[
-                Q(
-                    'nested', path='scoring.courses',
-                    filter=Q(
-                        'term', scoring__courses__name="Wine"
-                    )
-                ),
+                Q('term', is_active=True),
                 Q(
                     'nested', path='scoring.ingredients',
                     filter=Q(
