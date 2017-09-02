@@ -180,14 +180,8 @@ class SGSearch(object):
                         Q('exists', field="scoring.ingredients")
                     )
                 )
-            ),
-            Q(
-                'nested', path='scoring.ingredients',
-                query=Q(
-                    Q('exists', field="scoring.ingredients")
-                )
-            )
-        ]
+            ]
+        )
 
         # Name filters
         product_should_simple_name = Q(
