@@ -1,12 +1,11 @@
 import os
 from elasticsearch_dsl.connections import connections
 from elasticsearch_dsl import Search, Q
-from elasticsearch import Elasticsearch
 from slugify import slugify
 
 ELASTICSEARCH = os.environ.get('ELASTICSEARCH')
-RECIPE_INDEX = 'recipes_alias'
-PRODUCT_INDEX = 'product'
+RECIPE_INDEX = 'recipes_v1'
+PRODUCT_INDEX = 'product_v1'
 
 # `empty_results.result.src` is set depending function called
 # Example:
@@ -42,9 +41,9 @@ class SGSearch(object):
         if not self.elasticsearch:
             raise ValueError('You must provide a elasticsearch host.')
 
-        # self.elasticsearch_connection = connections.configure(
-        #     default={'hosts': self.elasticsearch, 'timeout': 20}, sniff_on_start=True
-        # )
+        self.elasticsearch_connection = connections.configure(
+            default={'hosts': self.elasticsearch, 'timeout': 20}, sniff_on_start=True
+        )
 
     def __repr__(self):
         return '<SGsearch {}>'.format(self)
@@ -60,7 +59,7 @@ class SGSearch(object):
 
         # product queries
         nested_product_course_name = Q(
-            'nested', path='scoring.courses', filter=Q(
+            'nested', path='scoring.courses', query=Q(
                 'term', scoring__courses__name="Wine"
             ) & Q(
                 'exists', field="scoring.ingredients"
@@ -70,13 +69,19 @@ class SGSearch(object):
             'indices',
             indices=[PRODUCT_INDEX], query=nested_product_course_name
         )
-        product_should_simple_name = Q("term", name_lowercase__raw=u"{}".format(
-            simple_name.strip().replace("\n", "").lower()),
-            boost=1
+        product_should_simple_name = Q(
+            'term',
+            name_lowercase__raw={
+                'value': u'{}'.format(simple_name.strip().replace('\n', '').lower()),
+                'boost': 1
+            }
         )
-        product_should_complex_name = Q("term", name_lowercase__raw=u"{}".format(
-            name.strip().replace("\n", "").lower()),
-            boost=2
+        product_should_complex_name = Q(
+            'term',
+            name_lowercase__raw={
+                'value': u'{}'.format(name.strip().replace('\n', '').lower()),
+                'boost': 2
+            }
         )
         product_name_should = Q(
             'bool',
@@ -90,10 +95,18 @@ class SGSearch(object):
         # recipe queries
         recipe_must = Q("exists", field="_sg.ingredients")
         recipe_should_simple_name = Q(
-            "term", clean_name__raw=clean_name(simple_name), boost=3
+            'term',
+            clean_name__raw={
+                'value': clean_name(simple_name),
+                'boost': 3
+            }
         )
         recipe_should_complex_name = Q(
-            "term", clean_name__raw=clean_name(name), boost=4
+            'term',
+            clean_name__raw={
+                'value': clean_name(name),
+                'boost': 4
+            }
         )
         recipe_name_should = Q(
             'bool',
@@ -152,10 +165,11 @@ class SGSearch(object):
         @name: Cabernet Sauvignon, Faust 11 Napa
         @simple_name: Cabernet Sauvignon
         """
-        query = Search(index='{}'.format(PRODUCT_INDEX), using=Elasticsearch(self.elasticsearch))
+        query = Search(index=PRODUCT_INDEX)
 
         # Nested Query
         # filters only wine courses and products must have scoring.ingredients
+
         nested_scoring = Q(
             'bool',
             must=[
@@ -166,26 +180,37 @@ class SGSearch(object):
                         Q('exists', field="scoring.ingredients")
                     )
                 )
-            ]
-        )
+            ),
+            Q(
+                'nested', path='scoring.ingredients',
+                query=Q(
+                    Q('exists', field="scoring.ingredients")
+                )
+            )
+        ]
 
         # Name filters
-        product_should_simple_name = Q("term", name_lowercase__raw=u"{}".format(
-            simple_name.strip().replace("\n", "").lower()),
-            boost=1
+        product_should_simple_name = Q(
+            'term',
+            name_lowercase__raw={
+                'value': u"{}".format(simple_name.strip().replace("\n", "").lower()),
+                'boost': 1
+            }
         )
-        product_should_complex_name = Q("term", name_lowercase__raw=u"{}".format(
-            name.strip().replace("\n", "").lower()),
-            boost=2
-        )
-        product_name_should = Q(
-            'bool',
-            should=[product_should_simple_name, product_should_complex_name]
+        product_should_complex_name = Q(
+            "term",
+            name_lowercase__raw={
+                'value': u'{}'.format(name.strip().replace("\n", "").lower()),
+                'boost': 2
+            }
         )
 
         # Bool query for product names query and nested scoring query
-        query = query.query('bool', must=[nested_scoring, product_name_should])
-
+        query = query.query(
+            'bool',
+            must=nested_scoring,
+            should=[product_should_simple_name, product_should_complex_name]
+        )
         result = query.execute()
 
         if result:

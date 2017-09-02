@@ -38,7 +38,7 @@ setup(
     # packages=find_packages(exclude=['contrib', 'docs', 'tests']),
     py_modules=["sg_search"],
     install_requires=[
-        'elasticsearch-dsl==2.2.0',
+        'elasticsearch-dsl>=5.0.0,<6.0.0',
         'python-slugify==1.2.4'
     ],
     # $ pip install -e .[test]
