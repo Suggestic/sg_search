@@ -169,11 +169,16 @@ class SGSearch(object):
 
         # Nested Query
         # filters only wine courses and products must have scoring.ingredients
-        nested_scoring = [
-            Q(
-                'nested', path='scoring.courses',
-                query=Q(
-                    'term', scoring__courses__name="Wine"
+
+        nested_scoring = Q(
+            'bool',
+            must=[
+                Q('term', is_active=True),
+                Q(
+                    'nested', path='scoring.ingredients',
+                    filter=Q(
+                        Q('exists', field="scoring.ingredients")
+                    )
                 )
             ),
             Q(
